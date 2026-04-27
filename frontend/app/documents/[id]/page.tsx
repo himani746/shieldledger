@@ -9,6 +9,7 @@ import BlockchainProofCard from "@/components/ui/BlockchainProofCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { TAMPERED_HASH } from "@/lib/mockData";
 import { copyToClipboard, formatDate, formatDateTime, truncateHash } from "@/lib/utils";
+import axios from "axios";
 
 const doc = {
   title: "Supplier Contract Q1 2024",
@@ -27,10 +28,31 @@ const doc = {
   ],
 };
 
-export default function DocumentDetailsPage() {
+export default function DocumentDetailsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadCertificate = async () => {
+    try {
+      setIsDownloading(true);
+      // Calls the real API endpoint with an auth header
+      const res = await axios.get(`http://localhost:4000/api/documents/${params.id}/certificate`, {
+        headers: {
+          Authorization: `Bearer dummy-auth-token-for-demo`, // Replace with actual token
+        },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      window.open(url, "_blank");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to download certificate");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -119,8 +141,17 @@ export default function DocumentDetailsPage() {
       </div>
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <button className="rounded-xl bg-gradient-to-r from-primary to-indigo-500 px-4 py-2 text-sm font-semibold hover-glow-purple">
-          <Download className="mr-2 inline h-4 w-4" /> Download Certificate
+        <button
+          onClick={handleDownloadCertificate}
+          disabled={isDownloading}
+          className="rounded-xl bg-gradient-to-r from-primary to-indigo-500 px-4 py-2 text-sm font-semibold hover-glow-purple disabled:opacity-70 disabled:cursor-not-allowed"
+        >
+          {isDownloading ? (
+            <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          ) : (
+            <Download className="mr-2 inline h-4 w-4" />
+          )}
+          {isDownloading ? "Downloading..." : "Download Certificate"}
         </button>
         <button className="rounded-xl border border-border px-4 py-2 text-sm hover:bg-surface2">
           <FileText className="mr-2 inline h-4 w-4" /> Export Audit Trail
