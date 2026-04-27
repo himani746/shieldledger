@@ -597,6 +597,9 @@ video {
 .top-full{
   top: 100%;
 }
+.bottom-4{
+  bottom: 1rem;
+}
 .isolate{
   isolation: isolate;
 }
@@ -2051,6 +2054,9 @@ video {
 .opacity-90{
   opacity: 0.9;
 }
+.opacity-5{
+  opacity: 0.05;
+}
 .mix-blend-screen{
   mix-blend-mode: screen;
 }
@@ -2655,6 +2661,10 @@ body {
 
 .disabled\:opacity-50:disabled{
   opacity: 0.5;
+}
+
+.disabled\:opacity-70:disabled{
+  opacity: 0.7;
 }
 
 .group\/menu-item:focus-within .group-focus-within\/menu-item\:opacity-100{
