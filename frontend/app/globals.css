@@ -1,0 +1,84 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+html,
+body {
+  background: #050b18;
+  color: #f0f0f0;
+  font-family: "Inter", sans-serif;
+}
+
+body {
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0d1526;
+}
+::-webkit-scrollbar-thumb {
+  background: #273756;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #38517f;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.hover-glow-purple:hover {
+  box-shadow: 0 0 20px rgba(108, 99, 255, 0.3);
+}
+
+.hover-glow-teal:hover {
+  box-shadow: 0 0 20px rgba(0, 217, 163, 0.3);
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #6c63ff, #00d9a3, #6c63ff);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+
+.shimmer-text {
+  background-image: linear-gradient(
+    120deg,
+    rgba(108, 99, 255, 0.3) 20%,
+    rgba(0, 217, 163, 0.8) 40%,
+    rgba(108, 99, 255, 0.3) 60%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2.4s linear infinite;
+}
+
+.mesh-bg {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(108, 99, 255, 0.2) 0, transparent 35%),
+    radial-gradient(circle at 80% 0%, rgba(0, 217, 163, 0.15) 0, transparent 30%),
+    radial-gradient(circle at 50% 90%, rgba(108, 99, 255, 0.18) 0, transparent 30%);
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
