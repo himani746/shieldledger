@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import {
   CheckCircle,
@@ -18,16 +20,21 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import MetricCard from "@/components/dashboard/MetricCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 import UploadZone from "@/components/ui/UploadZone";
-import { MOCK_DOCUMENTS } from "@/lib/mockData";
 import { copyToClipboard, formatDate, polygonscanTxUrl, truncateHash } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { data: session } = useSession();
   const [showDemoBanner, setShowDemoBanner] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingDocuments, setLoadingDocuments] = useState(true);
+  const [documents, setDocuments] = useState<any[]>([]);
   const [doneTx, setDoneTx] = useState<string | null>(null);
+  const [doneDoc, setDoneDoc] = useState<any>(null);
 
   const today = useMemo(
     () =>
@@ -39,16 +46,58 @@ export default function DashboardPage() {
     [],
   );
 
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        const res = await apiFetch('/api/documents');
+        if (res.ok) {
+          const data = await res.json();
+          setDocuments(data);
+        } else {
+          toast.error("Failed to load documents.");
+        }
+      } catch (error) {
+        console.error('Fetch Error:', error);
+        toast.error("Failed to load documents.");
+      } finally {
+        setLoadingDocuments(false);
+      }
+    };
+    fetchDocuments();
+  }, []);
+
   const onAnchor = async () => {
+    console.log('Upload clicked');
     if (!file || !title.trim()) {
       toast.error("Please add a file and title.");
       return;
     }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setDoneTx("0x02073afeb4957cfc3cf0a4557629854f3d9d40b7");
-    setLoading(false);
-    toast.success("Document anchored successfully");
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', title.trim());
+
+      const res = await apiFetch('/api/documents/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        console.log('Document created with ID:', data.document?.id);
+        setDoneDoc(data.document);
+        setDoneTx(data.document?.txHash || "Pending validation on chain");
+        toast.success("Document anchored successfully");
+      } else {
+        toast.error(data.message || "Upload failed");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Upload failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -62,14 +111,14 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <h2 className="text-2xl font-bold">Good morning, TechCorp</h2>
+      <h2 className="text-2xl font-bold">Good morning, {session?.user?.name || 'User'}</h2>
       <p className="mb-6 text-muted">{today}</p>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard icon={FileText} label="Total Documents" value={12} color="#6C63FF" />
-        <MetricCard icon={CheckCircle} label="Confirmed On-Chain" value={10} color="#00D9A3" />
-        <MetricCard icon={Clock} label="Pending Anchoring" value={1} color="#F59E0B" />
-        <MetricCard icon={Users} label="Signatories Added" value={8} color="#8B5CF6" />
+        <MetricCard icon={FileText} label="Total Documents" value={documents.length} color="#6C63FF" />
+        <MetricCard icon={CheckCircle} label="Confirmed On-Chain" value={documents.filter(d => d.status === "confirmed").length} color="#00D9A3" />
+        <MetricCard icon={Clock} label="Pending Anchoring" value={documents.filter(d => d.status === "anchoring").length} color="#F59E0B" />
+        <MetricCard icon={Users} label="Signatories Added" value={0} color="#8B5CF6" />
       </div>
 
       <div className="glass-card mt-8 overflow-hidden rounded-2xl">
@@ -84,7 +133,20 @@ export default function DashboardPage() {
             </tr>
           </thead>
           <tbody>
-            {MOCK_DOCUMENTS.map((doc, i) => (
+            {loadingDocuments ? (
+              <tr>
+                <td colSpan={5} className="py-8 text-center text-muted">
+                  <span className="mx-auto block h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                  <span className="mt-2 block text-sm">Loading documents...</span>
+                </td>
+              </tr>
+            ) : documents.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-8 text-center text-muted">
+                  No documents found.
+                </td>
+              </tr>
+            ) : documents.map((doc, i) => (
               <motion.tr
                 key={doc.id}
                 initial={{ opacity: 0, y: 12 }}
@@ -110,7 +172,13 @@ export default function DashboardPage() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2 text-muted">
-                    <button className="rounded-lg p-1 hover:bg-surface2 hover:text-text">
+                    <button 
+                      onClick={() => {
+                        console.log('View clicked');
+                        router.push(`/documents/${doc.id}`);
+                      }}
+                      className="rounded-lg p-1 hover:bg-surface2 hover:text-text"
+                    >
                       <Eye className="h-4 w-4" />
                     </button>
                     <button className="rounded-lg p-1 hover:bg-surface2 hover:text-text">
@@ -177,7 +245,18 @@ export default function DashboardPage() {
                 <a href={polygonscanTxUrl(doneTx)} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-secondary hover:underline">
                   View on Polygonscan
                 </a>
-                <button className="mt-4 rounded-xl border border-border px-4 py-2 hover:bg-surface2">View Document</button>
+                <button 
+                  onClick={() => {
+                    if (doneDoc?.id) {
+                      router.push(`/documents/${doneDoc.id}`);
+                    } else if (doneDoc?.fileUrl || doneDoc?.s3Url) {
+                      window.open(doneDoc.fileUrl || doneDoc.s3Url, '_blank');
+                    }
+                  }}
+                  className="mt-4 w-full rounded-xl border border-border px-4 py-2 hover:bg-surface2"
+                >
+                  View Document
+                </button>
               </div>
             )}
           </motion.div>

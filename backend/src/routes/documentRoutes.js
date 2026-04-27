@@ -230,6 +230,128 @@ async function buildAuditPdfBuffer(document) {
   return donePromise;
 }
 
+router.get("/", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id || req.user.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const documents = await prisma.document.findMany({
+      where: { uploaded_by: userId },
+      orderBy: { created_at: "desc" },
+      include: {
+        anchor_events: true,
+      }
+    });
+
+    const mapped = documents.map(doc => {
+      const anchorEvents = doc.anchor_events || [];
+      const firstAnchor = anchorEvents.length > 0 ? anchorEvents[0] : null;
+      return {
+        id: doc.id,
+        title: doc.title,
+        status: doc.status,
+        date: doc.created_at || doc.createdAt || new Date(),
+        hash: doc.sha3_hash || doc.hash || "",
+        txHash: firstAnchor ? (firstAnchor.tx_hash || firstAnchor.txHash) : null,
+      };
+    });
+
+    return res.status(200).json(mapped);
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to fetch documents.",
+      error: error.message,
+    });
+  }
+});
+
+router.get("/:id", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id || req.user.userId;
+    const documentId = req.params.id;
+
+    console.log('Searching for ID in DB:', documentId, 'userId:', userId);
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const document = await prisma.document.findFirst({
+      where: { id: documentId, uploaded_by: userId },
+      include: {
+        uploader: { select: { org_name: true, email: true } },
+      },
+    });
+
+    if (!document) {
+      return res.status(404).json({ message: "Document not found." });
+    }
+
+    let versions = [];
+    try {
+      versions = await prisma.documentVersion.findMany({
+        where: { document_id: documentId },
+        orderBy: { version: "asc" },
+      });
+    } catch (e) {}
+
+    let signatories = [];
+    try {
+      signatories = await prisma.signatory.findMany({
+        where: { document_id: documentId },
+      });
+    } catch (e) {}
+
+    let anchorEvents = [];
+    try {
+      anchorEvents = await prisma.anchorEvent.findMany({
+        where: { document_id: documentId },
+      });
+    } catch (e) {
+      try {
+        anchorEvents = await prisma.anchor_event.findMany({
+          where: { document_id: documentId },
+        });
+      } catch (err) {}
+    }
+
+    const firstAnchor = anchorEvents.length > 0 ? anchorEvents[0] : null;
+
+    return res.status(200).json({
+      id: document.id,
+      title: document.title,
+      status: document.status,
+      hash: document.sha3_hash || document.hash || "",
+      date: document.created_at || document.createdAt,
+      mimeType: document.mime_type,
+      fileSize: document.file_size_bytes,
+      orgName: document.uploader?.org_name || null,
+      ownerEmail: document.uploader?.email || null,
+      txHash: firstAnchor ? (firstAnchor.tx_hash || firstAnchor.txHash) : null,
+      blockNumber: firstAnchor ? (firstAnchor.block_number || firstAnchor.blockNumber) : null,
+      network: "Polygon Mumbai",
+      anchoredAt: firstAnchor ? (firstAnchor.created_at || firstAnchor.createdAt) : null,
+      versions: versions.map(v => ({
+        version: v.version,
+        hash: v.sha3_hash,
+        date: v.created_at || v.createdAt,
+        note: v.label || (v.version === 1 ? "Original" : `Version ${v.version}`),
+      })),
+      signatories: signatories.map(s => ({
+        email: s.email,
+        signedAt: s.signed_at || s.signedAt || null,
+        invitedAt: s.created_at || s.createdAt,
+      })),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to fetch document.",
+      error: error.message,
+    });
+  }
+});
 
 const uploadLimiter = rateLimit({
   windowMs: 60 * 1000,

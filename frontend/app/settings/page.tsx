@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { MOCK_ORG } from "@/lib/mockData";
+import { useSession } from "next-auth/react";
 
 export default function SettingsPage() {
-  const [orgName, setOrgName] = useState(MOCK_ORG.name);
+  const { data: session } = useSession();
+  const [orgName, setOrgName] = useState(session?.user?.name || "");
   const [showDelete, setShowDelete] = useState(false);
   const [error, setError] = useState("");
 
@@ -26,7 +27,7 @@ export default function SettingsPage() {
           <div className="space-y-3">
             <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className="w-full rounded-xl border border-border bg-surface2 px-3 py-2 outline-none focus:border-primary" />
             {orgName.trim().length < 2 && <p className="text-sm text-red-400">Organisation name is required.</p>}
-            <input value={MOCK_ORG.email} readOnly className="w-full rounded-xl border border-border bg-surface2/60 px-3 py-2 text-muted" />
+            <input value={session?.user?.email || ""} readOnly className="w-full rounded-xl border border-border bg-surface2/60 px-3 py-2 text-muted" />
             <button className="rounded-xl bg-gradient-to-r from-primary to-indigo-500 px-4 py-2 font-semibold hover-glow-purple">
               Save Changes
             </button>

@@ -5,8 +5,8 @@ import { motion } from "framer-motion";
 import { Shield } from "lucide-react";
 import VerificationResult from "@/components/verify/VerificationResult";
 import UploadZone from "@/components/ui/UploadZone";
-import { DEMO_HASH } from "@/lib/mockData";
 import { computeKeccak256 } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
 
 type VerifyStatus = "idle" | "loading" | "authentic" | "tampered";
 
@@ -14,26 +14,33 @@ export default function VerifyPage() {
   const [tab, setTab] = useState<"hash" | "upload">("hash");
   const [inputHash, setInputHash] = useState("");
   const [status, setStatus] = useState<VerifyStatus>("idle");
+  const [verifyData, setVerifyData] = useState<any>(null);
 
   const runVerify = async (hash: string) => {
     if (!hash.trim()) return;
     setStatus("loading");
-    await new Promise((r) => setTimeout(r, 2000));
-    setStatus(hash === DEMO_HASH ? "authentic" : "tampered");
+    try {
+      const res = await apiFetch(`/api/documents/verify/${hash}`);
+      const data = await res.json();
+      if (res.ok && data.authentic) {
+        setVerifyData(data);
+        setStatus("authentic");
+      } else {
+        setVerifyData(null);
+        setStatus("tampered");
+      }
+    } catch (error) {
+      console.error(error);
+      setStatus("tampered");
+    }
   };
 
   useEffect(() => {
     const hashFromQuery = new URLSearchParams(window.location.search).get("hash");
-    if (hashFromQuery) setInputHash(hashFromQuery);
-
-    const keyHandler = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "d") {
-        setInputHash(DEMO_HASH);
-        void runVerify(DEMO_HASH);
-      }
-    };
-    window.addEventListener("keydown", keyHandler);
-    return () => window.removeEventListener("keydown", keyHandler);
+    if (hashFromQuery) {
+      setInputHash(hashFromQuery);
+      void runVerify(hashFromQuery);
+    }
   }, []);
 
   const heading = useMemo(
@@ -88,6 +95,10 @@ export default function VerifyPage() {
           <VerificationResult
             status={status === "loading" ? "loading" : status === "authentic" ? "authentic" : "tampered"}
             hash={inputHash}
+            orgName={verifyData?.orgName}
+            anchoredAt={verifyData?.anchoredAt}
+            txHash={verifyData?.txHash}
+            blockNumber={verifyData?.blockNumber}
           />
         )}
 

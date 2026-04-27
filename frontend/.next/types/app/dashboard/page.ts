@@ -1,4 +1,4 @@
-// File: /Users/shxbh/Desktop/shieldledger/frontend/app/dashboard/page.tsx
+// File: D:\shieldledger\frontend\app\dashboard\page.tsx
 import * as entry from '../../../../app/dashboard/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

@@ -2,15 +2,18 @@
 
 import { motion } from "framer-motion";
 import { Shield, ShieldCheck, ShieldX } from "lucide-react";
-import { DEMO_HASH } from "@/lib/mockData";
 import { truncateHash } from "@/lib/utils";
 
 type Props = {
   status: "loading" | "authentic" | "tampered";
   hash?: string;
+  orgName?: string;
+  anchoredAt?: string;
+  txHash?: string;
+  blockNumber?: number;
 };
 
-export default function VerificationResult({ status, hash }: Props) {
+export default function VerificationResult({ status, hash, orgName, anchoredAt, txHash, blockNumber }: Props) {
   if (status === "loading") {
     return (
       <div className="mt-6 text-center">
@@ -60,15 +63,15 @@ export default function VerificationResult({ status, hash }: Props) {
       >
         {authentic ? (
           <div className="space-y-2 text-sm text-muted">
-            <p>Registered by: TechCorp Pvt Ltd</p>
-            <p>Anchored: January 15, 2024 at 10:23 AM</p>
-            <p>Blockchain TX: 0x02073a...</p>
-            <p>Block: 42,891,234</p>
+            {orgName && <p>Registered by: {orgName}</p>}
+            {anchoredAt && <p>Anchored: {new Date(anchoredAt).toLocaleString()}</p>}
+            {txHash && <p>Blockchain TX: {truncateHash(txHash, 16)}</p>}
+            {blockNumber && <p>Block: {blockNumber.toLocaleString()}</p>}
             <p>Network: Polygon Mumbai</p>
           </div>
         ) : (
           <div className="space-y-2 text-sm text-muted">
-            <p className="font-mono">Hash checked: {truncateHash(hash ?? DEMO_HASH, 26)}</p>
+            <p className="font-mono">Hash checked: {truncateHash(hash ?? "0x0000000000000000000000000000000000000000000000000000000000000000", 26)}</p>
             <p>No matching record found on Polygon Mumbai</p>
           </div>
         )}
@@ -76,3 +79,4 @@ export default function VerificationResult({ status, hash }: Props) {
     </motion.div>
   );
 }
+

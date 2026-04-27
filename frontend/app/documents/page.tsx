@@ -1,15 +1,41 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ExternalLink, FileText, Search } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import HashDisplay from "@/components/ui/HashDisplay";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { MOCK_DOCUMENTS } from "@/lib/mockData";
 import { formatDate, polygonscanTxUrl } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
+import toast from "react-hot-toast";
 
 export default function DocumentsPage() {
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        const res = await apiFetch('/api/documents');
+        if (res.ok) {
+          const data = await res.json();
+          setDocuments(data);
+        } else {
+          toast.error("Failed to load documents.");
+        }
+      } catch (error) {
+        console.error("Fetch Error:", error);
+        toast.error("Failed to load documents.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDocuments();
+  }, []);
+
   return (
     <DashboardLayout>
       <div className="mb-6 flex items-center justify-between">
@@ -29,7 +55,14 @@ export default function DocumentsPage() {
       </div>
 
       <div className="grid gap-4">
-        {MOCK_DOCUMENTS.map((doc, index) => (
+        {loading ? (
+          <div className="py-8 text-center text-muted">
+            <span className="mx-auto block h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+            <span className="mt-2 block text-sm">Loading documents...</span>
+          </div>
+        ) : documents.length === 0 ? (
+          <div className="py-8 text-center text-muted">No documents found.</div>
+        ) : documents.map((doc, index) => (
           <motion.article
             key={doc.id}
             initial={{ opacity: 0, y: 10 }}

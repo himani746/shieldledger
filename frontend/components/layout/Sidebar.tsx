@@ -38,10 +38,10 @@ export default function Sidebar() {
   const router = useRouter();
 
   const userName = useMemo(
-    () => session?.user?.name ?? "TechCorp Pvt Ltd",
+    () => session?.user?.name ?? "My Organization",
     [session?.user?.name],
   );
-  const email = session?.user?.email ?? "admin@techcorp.com";
+  const email = session?.user?.email ?? "user@shieldledger.com";
 
   const logout = async () => {
     await signOut({ redirect: false });

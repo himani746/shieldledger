@@ -35,13 +35,14 @@ async function findDocumentWithOptionalAnchors(hash) {
   }
 }
 
-router.get("/verify", async (req, res) => {
+router.get(["/verify", "/documents/verify/:hash"], async (req, res) => {
   try {
-    const hash = typeof req.query?.hash === "string" ? req.query.hash.trim() : "";
+    const rawHash = req.params?.hash || req.query?.hash || "";
+    const hash = typeof rawHash === "string" ? rawHash.trim() : "";
 
     if (!hash) {
       return res.status(400).json({
-        message: "Query parameter 'hash' is required.",
+        message: "Hash is required (as a query parameter or in the path).",
       });
     }
 
@@ -58,9 +59,16 @@ router.get("/verify", async (req, res) => {
       Object.prototype.hasOwnProperty.call(include, "anchorEvents") ||
       Object.prototype.hasOwnProperty.call(include, "anchor_events");
 
+    const anchorEvents = details.anchor_events || details.anchorEvents || [];
+    const firstAnchor = anchorEvents.length > 0 ? anchorEvents[0] : null;
+
     return res.status(200).json({
       authentic: true,
       details,
+      orgName: details.organization?.name || details.uploader?.name || null,
+      txHash: firstAnchor ? (firstAnchor.tx_hash || firstAnchor.txHash) : null,
+      anchoredAt: firstAnchor ? (firstAnchor.created_at || firstAnchor.createdAt) : null,
+      blockNumber: firstAnchor ? (firstAnchor.block_number || firstAnchor.blockNumber) : null,
       anchorEventsIncluded: hasAnchorEvents,
     });
   } catch (error) {

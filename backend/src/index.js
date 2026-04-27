@@ -10,8 +10,16 @@ const verifyRoutes = require("./routes/verifyRoutes");
 
 const app = express();
 
+app.use((req, res, next) => {
+  console.log('Incoming Request:', req.method, req.url);
+  next();
+});
+
 app.use(helmet());
-app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
+app.use(cors({ 
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true 
+}));
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
@@ -20,10 +28,10 @@ app.use("/api", userRoutes);
 app.use("/api", verifyRoutes);
 
 app.get("/health", (req, res) => {
-  res.json({ 
-    status: "ok", 
+  res.json({
+    status: "ok",
     db: "connected",
-    message: "Google Solutions Hackathon Foundation Complete!" 
+    message: "Google Solutions Hackathon Foundation Complete!"
   });
 });
 
@@ -37,7 +45,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Backend server listening on http://localhost:${PORT}`);
 });
