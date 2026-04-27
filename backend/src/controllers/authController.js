@@ -60,7 +60,7 @@ const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid email or password." });
@@ -71,7 +71,13 @@ const login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { 
+        id: String(user.id),
+        userId: String(user.id), 
+        email: user.email,
+        organization_id: String(user.organization_id),
+        organizationId: String(user.organization_id)
+      },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );

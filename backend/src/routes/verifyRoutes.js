@@ -6,46 +6,33 @@ const prisma = require("../lib/prisma");
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-const USER_INCLUDE = {
-  user: {
+const DEFAULT_INCLUDE = {
+  uploader: {
     select: {
       id: true,
       email: true,
-      org_name: true,
+      name: true,
     },
   },
+  organization: true,
+  anchor_events: true,
 };
 
 async function findDocumentWithOptionalAnchors(hash) {
-  const includeVariants = [
-    { ...USER_INCLUDE, anchorEvents: true },
-    { ...USER_INCLUDE, anchor_events: true },
-    USER_INCLUDE,
-  ];
-
-  for (const include of includeVariants) {
-    try {
-      const details = await prisma.document.findFirst({
-        where: { hash },
-        include,
-      });
-      return { details, include };
-    } catch (error) {
-      const message = String(error?.message || "");
-      const isUnknownIncludeField =
-        message.includes("Unknown field") && message.includes("for include statement");
-
-      if (!isUnknownIncludeField) {
-        throw error;
-      }
+  try {
+    const details = await prisma.document.findFirst({
+      where: { sha3_hash: hash },
+      include: DEFAULT_INCLUDE,
+    });
+    
+    if (details && details.anchor_events && details.anchor_events.length > 0) {
+      details.anchor_event = details.anchor_events[0];
     }
+    
+    return { details, include: DEFAULT_INCLUDE };
+  } catch (error) {
+    throw error;
   }
-
-  const details = await prisma.document.findFirst({
-    where: { hash },
-    include: USER_INCLUDE,
-  });
-  return { details, include: USER_INCLUDE };
 }
 
 router.get("/verify", async (req, res) => {
@@ -96,11 +83,17 @@ router.post("/verify", upload.single("file"), async (req, res) => {
     }
 
     const documentRecord = await prisma.document.findFirst({
-      where: { hash },
+      where: { sha3_hash: hash },
       include: {
-        user: true,
+        uploader: true,
+        organization: true,
+        anchor_events: true
       },
     });
+
+    if (documentRecord && documentRecord.anchor_events && documentRecord.anchor_events.length > 0) {
+      documentRecord.anchor_event = documentRecord.anchor_events[0];
+    }
 
     return res.status(200).json({
       authentic: Boolean(documentRecord),

@@ -269,10 +269,15 @@ router.post("/upload", authMiddleware, uploadLimiter, upload.single("file"), asy
     const document = await prisma.document.create({
       data: {
         title: req.file.originalname,
-        hash,
-        s3Key,
+        document_type: "contract",
+        filename: req.file.originalname,
+        s3_key: s3Key,
+        file_size_bytes: req.file.size,
+        mime_type: req.file.mimetype,
+        sha3_hash: hash,
         status: "anchoring",
-        userId,
+        uploaded_by: userId,
+        organization_id: req.user.organization_id || req.user.organizationId,
       },
     });
 
@@ -298,13 +303,13 @@ router.post("/upload", authMiddleware, uploadLimiter, upload.single("file"), asy
 router.get("/:id/certificate", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id || req.user.userId;
-    const documentId = Number(req.params.id);
+    const documentId = req.params.id;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (!Number.isInteger(documentId)) {
+    if (!documentId) {
       return res.status(400).json({ message: "Invalid document id." });
     }
 
@@ -339,14 +344,14 @@ router.get("/:id/certificate", authMiddleware, async (req, res) => {
 router.post("/:id/signatories", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id || req.user.userId;
-    const documentId = Number(req.params.id);
+    const documentId = req.params.id;
     const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (!Number.isInteger(documentId)) {
+    if (!documentId) {
       return res.status(400).json({ message: "Invalid document id." });
     }
 
@@ -405,13 +410,13 @@ router.post("/:id/version", authMiddleware, upload.single("file"), async (req, r
     }
 
     const userId = req.user.id || req.user.userId;
-    const documentId = Number(req.params.id);
+    const documentId = req.params.id;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (!Number.isInteger(documentId)) {
+    if (!documentId) {
       return res.status(400).json({ message: "Invalid document id." });
     }
 
@@ -461,13 +466,13 @@ router.post("/:id/version", authMiddleware, upload.single("file"), async (req, r
 router.get("/:id/audit", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id || req.user.userId;
-    const documentId = Number(req.params.id);
+    const documentId = req.params.id;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (!Number.isInteger(documentId)) {
+    if (!documentId) {
       return res.status(400).json({ message: "Invalid document id." });
     }
 

@@ -5,17 +5,14 @@ const prisma = require("../lib/prisma");
 anchorQueue.process(async (job) => {
   const { documentId, hash } = job.data;
 
-  await new Promise((resolve) => {
-    setTimeout(resolve, 2000);
-  });
-
-  const txHash = `0xabc${Date.now().toString(16)}`;
-  const blockNumber = Math.floor(Date.now() / 1000);
+  const anchorService = require("../../services/anchorService");
+  const { txHash, blockNumber } = await anchorService.anchor(hash);
 
   await prisma.anchorEvent.create({
     data: {
+      document_id: documentId,
       tx_hash: txHash,
-      block_number: blockNumber,
+      block_number: BigInt(blockNumber),
     },
   });
 
