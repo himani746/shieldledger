@@ -1,14 +1,14 @@
-🛡️ ShieldLedger
+**🛡️ ShieldLedger**
 
 **Immutable Document Notarization & AI-Powered Classification**
 
 ShieldLedger is a decentralized "Global Notary" platform that anchors the SHA-3 cryptographic fingerprints of digital documents onto the Polygon blockchain. It provides a permanent, tamper-proof record that anyone can verify for free, without needing a centralized authority. 
 
-🚀 The Problem
+**🚀 The Problem**
 
 Digital document fraud costs organizations billions annually. Traditional solutions (like DocuSign) are centralized, expensive ($2–$5/envelope), and create "data silos". If the provider goes offline, your     proof of authenticity vanishes.  
 
-✨ Key Features
+**✨ Key Features**
 
   • Blockchain Anchoring: Permanent SHA-3 hashing on Polygon Mumbai for ~$0.001 per document.  
   
@@ -21,7 +21,7 @@ Digital document fraud costs organizations billions annually. Traditional soluti
   • Smart Certificates: Generates a "Proof of Integrity" PDF with a QR code for instant mobile verification.  
   
 
-🛠️ Tech Stack
+**🛠️ Tech Stack**
 
   • Frontend: Next.js 14, TypeScript, Tailwind CSS. 
   
@@ -35,20 +35,16 @@ Digital document fraud costs organizations billions annually. Traditional soluti
   
   • Queue Management: Bull Queue & Redis for scalable transaction processing. 
 
-🏗️ Architecture Flow
+**🏗️ Architecture Flow**
 
   1. Upload: User uploads a PDF to the Next.js frontend.
-  2. 
-  3. Process: Backend computes a SHA-3-256 hash and stores encrypted metadata in PostgreSQL.
-  4. 
-  5. Queue: A Bull worker picks up the job to manage gas costs and retries.
-  6. 
-  7. Anchor: The hash is written to the DocumentRegistry.sol smart contract on Polygon.
-  
-  8. Classify: Gemini AI extracts text and tags the document type for the dashboard.
+  2. Process: Backend computes a SHA-3-256 hash and stores encrypted metadata in PostgreSQL.
+  3. Queue: A Bull worker picks up the job to manage gas costs and retries. 
+  4. Anchor: The hash is written to the DocumentRegistry.sol smart contract on Polygon.
+  5. Classify: Gemini AI extracts text and tags the document type for the dashboard.
      
 
-🔧 Getting Started
+**🔧 Getting Started**
 
 **Prerequisites**
 
@@ -59,8 +55,7 @@ Digital document fraud costs organizations billions annually. Traditional soluti
   • Polygon Mumbai RPC URL (Alchemy/Infura)
   
 
-🔮 Roadmap
-
+**🔮 Roadmap*8*
   • Polygon Mainnet: Transitioning to production-ready mainnet deployment. 
   
   • ZK-Proofs: Privacy-preserving verification (Verify document age/status without revealing full text).
@@ -70,7 +65,7 @@ Digital document fraud costs organizations billions annually. Traditional soluti
   • Multi-chain Support: Expansion to Arbitrum and Base. 
   
 
-🔗 Links
+**🔗 Links**
 
   • Live Demo: shieldledger.vercel.app   
   
