@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4000';
+
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
@@ -10,35 +12,35 @@ const nextConfig = {
     return [
       {
         source: '/api/auth/register',
-        destination: 'http://localhost:4000/api/auth/register',
+        destination: `${BACKEND_URL}/api/auth/register`,
       },
       {
         source: '/api/auth/login',
-        destination: 'http://localhost:4000/api/auth/login',
+        destination: `${BACKEND_URL}/api/auth/login`,
       },
       {
         source: '/api/auth/password',
-        destination: 'http://localhost:4000/api/auth/password',
+        destination: `${BACKEND_URL}/api/auth/password`,
       },
       {
         source: '/api/prototype/:path*',
-        destination: 'http://localhost:4000/api/prototype/:path*',
+        destination: `${BACKEND_URL}/api/prototype/:path*`,
       },
       {
         source: '/api/documents/:path*',
-        destination: 'http://localhost:4000/api/documents/:path*',
+        destination: `${BACKEND_URL}/api/documents/:path*`,
       },
       {
         source: '/api/documents',
-        destination: 'http://localhost:4000/api/documents',
+        destination: `${BACKEND_URL}/api/documents`,
       },
       {
         source: '/api/verify',
-        destination: 'http://localhost:4000/api/verify',
+        destination: `${BACKEND_URL}/api/verify`,
       },
       {
         source: '/api/org',
-        destination: 'http://localhost:4000/api/org',
+        destination: `${BACKEND_URL}/api/org`,
       },
     ]
   },
