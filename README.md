@@ -55,7 +55,8 @@ Digital document fraud costs organizations billions annually. Traditional soluti
   • Polygon Mumbai RPC URL (Alchemy/Infura)
   
 
-**🔮 Roadmap*8*
+**🔮 Roadmap**
+
   • Polygon Mainnet: Transitioning to production-ready mainnet deployment. 
   
   • ZK-Proofs: Privacy-preserving verification (Verify document age/status without revealing full text).
