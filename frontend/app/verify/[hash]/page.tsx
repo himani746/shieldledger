@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import VerificationResult from "@/components/verify/VerificationResult";
-import axios from "axios";
 import { Shield } from "lucide-react";
 
 export default function VerifyHashPage() {
@@ -11,32 +10,28 @@ export default function VerifyHashPage() {
   const hash = params.hash as string;
 
   const [status, setStatus] = useState<"loading" | "authentic" | "tampered">("loading");
-  const [data, setData] = useState<any>(null);
+  const [details, setDetails] = useState<{ owner: string; timestamp: string } | null>(null);
 
   useEffect(() => {
     async function fetchVerification() {
       try {
-        const res = await axios.get(`http://localhost:4000/api/documents/verify?hash=${hash}`);
-        if (res.data) {
-          setData(res.data);
+        const res = await fetch(
+          `/api/prototype/verify?hash=${encodeURIComponent(hash)}`
+        );
+        const data = await res.json();
+        if (res.ok && data.authentic) {
+          setDetails({ owner: data.owner ?? "On-chain", timestamp: data.timestamp ?? new Date().toISOString() });
           setStatus("authentic");
         } else {
           setStatus("tampered");
         }
-      } catch (error) {
+      } catch {
         setStatus("tampered");
       }
     }
 
     if (hash) {
-      // Hardcode initial demo data behavior
-      if (hash === "0x3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d238ff944bacb478cb") {
-        setTimeout(() => {
-          setStatus("authentic");
-        }, 1500);
-      } else {
-        fetchVerification();
-      }
+      fetchVerification();
     }
   }, [hash]);
 
@@ -52,15 +47,7 @@ export default function VerifyHashPage() {
         <VerificationResult
           status={status}
           hash={hash}
-          // The VerificationResult component uses hardcoded dummy data for Authentic state currently.
-          // Once the API returns real data, VerificationResult will be updated to display it.
-        />
-        
-        {/* Task 7: Hidden Demo Toggle */}
-        <button
-          onClick={() => setStatus("tampered")}
-          className="absolute bottom-4 right-4 h-4 w-4 opacity-5 hover:opacity-100 focus:outline-none"
-          title="Force Tampered State (Demo)"
+          details={details}
         />
       </div>
     </div>

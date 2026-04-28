@@ -48,23 +48,15 @@ export default function RegisterPage() {
 
     try {
       await new Promise((r) => setTimeout(r, 1500));
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
-        organisationName: org,
+      await axios.post(`/api/auth/register`, {
+        org_name: org,
         email,
         password,
       });
       await autoSignIn();
-    } catch {
-      try {
-        await axios.post("/api/auth/register", {
-          organisationName: org,
-          email,
-          password,
-        });
-        await autoSignIn();
-      } catch {
-        setError("Registration failed. Please try again.");
-      }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -33,7 +33,9 @@ async function verify(hexHash) {
 }
 
 async function getHistory(hexHash) {
-  const filter = contract.filters.DocumentAnchored(hexHash);
+  const filter = hexHash
+    ? contract.filters.DocumentAnchored(hexHash)
+    : contract.filters.DocumentAnchored();
   const events = await contract.queryFilter(filter, 0, "latest");
   return events.map((e) => ({
     hash: e.args.hash,

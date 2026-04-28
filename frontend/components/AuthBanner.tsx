@@ -23,8 +23,8 @@ export const AuthBanner: React.FC<AuthBannerProps> = ({ onLogin }) => {
         <div className="flex items-center gap-3">
           <span className="text-2xl">🔐</span>
           <div>
-            <p className="text-foreground font-medium">ShieldLedger Demo</p>
-            <p className="text-muted-foreground text-sm">Use test@example.com / password123</p>
+            <p className="text-foreground font-medium">ShieldLedger Access</p>
+            <p className="text-muted-foreground text-sm">Sign in with your registered organization account.</p>
           </div>
         </div>
         <button

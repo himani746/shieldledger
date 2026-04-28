@@ -1,3 +1,8 @@
 node_modules
-.env 
-.env 
+.env
+.env.local
+.env*.local
+frontend/.next/
+frontend/.env.local
+backend/.env
+backend/.env

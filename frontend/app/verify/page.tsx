@@ -6,7 +6,6 @@ import { Shield } from "lucide-react";
 import VerificationResult from "@/components/verify/VerificationResult";
 import UploadZone from "@/components/ui/UploadZone";
 import { computeKeccak256 } from "@/lib/utils";
-import { apiFetch } from "@/lib/api";
 
 type VerifyStatus = "idle" | "loading" | "authentic" | "tampered";
 
@@ -14,33 +13,33 @@ export default function VerifyPage() {
   const [tab, setTab] = useState<"hash" | "upload">("hash");
   const [inputHash, setInputHash] = useState("");
   const [status, setStatus] = useState<VerifyStatus>("idle");
-  const [verifyData, setVerifyData] = useState<any>(null);
+  const [result, setResult] = useState<{ owner: string; timestamp: string } | null>(null);
 
   const runVerify = async (hash: string) => {
     if (!hash.trim()) return;
     setStatus("loading");
     try {
-      const res = await apiFetch(`/api/documents/verify/${hash}`);
+      await new Promise((r) => setTimeout(r, 800));
+      const res = await fetch(
+        `/api/prototype/verify?hash=${encodeURIComponent(hash)}`
+      );
       const data = await res.json();
       if (res.ok && data.authentic) {
-        setVerifyData(data);
+        setResult({ owner: data.owner ?? "On-chain", timestamp: data.timestamp ?? new Date().toISOString() });
         setStatus("authentic");
       } else {
-        setVerifyData(null);
+        setResult(null);
         setStatus("tampered");
       }
-    } catch (error) {
-      console.error(error);
+    } catch {
+      setResult(null);
       setStatus("tampered");
     }
   };
 
   useEffect(() => {
     const hashFromQuery = new URLSearchParams(window.location.search).get("hash");
-    if (hashFromQuery) {
-      setInputHash(hashFromQuery);
-      void runVerify(hashFromQuery);
-    }
+    if (hashFromQuery) setInputHash(hashFromQuery);
   }, []);
 
   const heading = useMemo(
@@ -95,10 +94,7 @@ export default function VerifyPage() {
           <VerificationResult
             status={status === "loading" ? "loading" : status === "authentic" ? "authentic" : "tampered"}
             hash={inputHash}
-            orgName={verifyData?.orgName}
-            anchoredAt={verifyData?.anchoredAt}
-            txHash={verifyData?.txHash}
-            blockNumber={verifyData?.blockNumber}
+            details={result}
           />
         )}
 

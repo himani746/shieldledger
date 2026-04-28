@@ -35,83 +35,49 @@ async function findDocumentWithOptionalAnchors(hash) {
   }
 }
 
-router.get(["/verify", "/documents/verify/:hash"], async (req, res) => {
+router.get("/verify", async (req, res) => {
   try {
-    const rawHash = req.params?.hash || req.query?.hash || "";
-    const hash = typeof rawHash === "string" ? rawHash.trim() : "";
+    const raw = typeof req.query?.hash === "string" ? req.query.hash.trim() : "";
+    const hash = raw.startsWith("0x") ? raw.slice(2) : raw;
 
     if (!hash) {
-      return res.status(400).json({
-        message: "Hash is required (as a query parameter or in the path).",
-      });
+      return res.status(400).json({ message: "Query parameter 'hash' is required." });
     }
 
-    const { details, include } = await findDocumentWithOptionalAnchors(hash);
+    const { details } = await findDocumentWithOptionalAnchors(hash);
 
     if (!details) {
-      return res.status(404).json({
-        authentic: false,
-        message: "Document not found for the provided hash.",
-      });
+      return res.status(404).json({ authentic: false, message: "Document not found for the provided hash." });
     }
 
-    const hasAnchorEvents =
-      Object.prototype.hasOwnProperty.call(include, "anchorEvents") ||
-      Object.prototype.hasOwnProperty.call(include, "anchor_events");
-
-    const anchorEvents = details.anchor_events || details.anchorEvents || [];
-    const firstAnchor = anchorEvents.length > 0 ? anchorEvents[0] : null;
-
-    return res.status(200).json({
-      authentic: true,
-      details,
-      orgName: details.organization?.name || details.uploader?.name || null,
-      txHash: firstAnchor ? (firstAnchor.tx_hash || firstAnchor.txHash) : null,
-      anchoredAt: firstAnchor ? (firstAnchor.created_at || firstAnchor.createdAt) : null,
-      blockNumber: firstAnchor ? (firstAnchor.block_number || firstAnchor.blockNumber) : null,
-      anchorEventsIncluded: hasAnchorEvents,
-    });
+    return res.status(200).json({ authentic: true, details });
   } catch (error) {
-    return res.status(500).json({
-      message: "Verification failed.",
-      error: error.message,
-    });
+    return res.status(500).json({ message: "Verification failed.", error: error.message });
   }
 });
 
 router.post("/verify", upload.single("file"), async (req, res) => {
   try {
-    const bodyHash = typeof req.body?.hash === "string" ? req.body.hash.trim() : "";
+    const bodyRaw = typeof req.body?.hash === "string" ? req.body.hash.trim() : "";
+    const bodyHash = bodyRaw.startsWith("0x") ? bodyRaw.slice(2) : bodyRaw;
     const hash = req.file ? keccak256(req.file.buffer) : bodyHash;
 
     if (!hash) {
-      return res.status(400).json({
-        message: "Provide either a hash in body or upload a file.",
-      });
+      return res.status(400).json({ message: "Provide either a hash in body or upload a file." });
     }
 
     const documentRecord = await prisma.document.findFirst({
       where: { sha3_hash: hash },
-      include: {
-        uploader: true,
-        organization: true,
-        anchor_events: true
-      },
+      include: { uploader: true, organization: true, anchor_events: true },
     });
 
-    if (documentRecord && documentRecord.anchor_events && documentRecord.anchor_events.length > 0) {
+    if (documentRecord?.anchor_events?.length > 0) {
       documentRecord.anchor_event = documentRecord.anchor_events[0];
     }
 
-    return res.status(200).json({
-      authentic: Boolean(documentRecord),
-      details: documentRecord,
-    });
+    return res.status(200).json({ authentic: Boolean(documentRecord), details: documentRecord });
   } catch (error) {
-    return res.status(500).json({
-      message: "Verification failed.",
-      error: error.message,
-    });
+    return res.status(500).json({ message: "Verification failed.", error: error.message });
   }
 });
 

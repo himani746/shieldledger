@@ -1,7 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
-
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ExternalLink, FileText, Search } from "lucide-react";
@@ -10,30 +8,29 @@ import HashDisplay from "@/components/ui/HashDisplay";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { formatDate, polygonscanTxUrl } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
-import toast from "react-hot-toast";
+import { useEffect, useState } from "react";
+
+type LiveDocument = {
+  id: string;
+  title: string;
+  hash: string;
+  status: "anchoring" | "confirmed" | "tampered";
+  txHash: string | null;
+  timestamp: string;
+};
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [documents, setDocuments] = useState<LiveDocument[]>([]);
 
   useEffect(() => {
-    const fetchDocuments = async () => {
-      try {
-        const res = await apiFetch('/api/documents');
-        if (res.ok) {
-          const data = await res.json();
-          setDocuments(data);
-        } else {
-          toast.error("Failed to load documents.");
-        }
-      } catch (error) {
-        console.error("Fetch Error:", error);
-        toast.error("Failed to load documents.");
-      } finally {
-        setLoading(false);
+    const loadDocuments = async () => {
+      const response = await apiFetch("/api/documents");
+      const data = await response.json();
+      if (response.ok && Array.isArray(data.documents)) {
+        setDocuments(data.documents);
       }
     };
-    fetchDocuments();
+    void loadDocuments();
   }, []);
 
   return (
@@ -55,14 +52,7 @@ export default function DocumentsPage() {
       </div>
 
       <div className="grid gap-4">
-        {loading ? (
-          <div className="py-8 text-center text-muted">
-            <span className="mx-auto block h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
-            <span className="mt-2 block text-sm">Loading documents...</span>
-          </div>
-        ) : documents.length === 0 ? (
-          <div className="py-8 text-center text-muted">No documents found.</div>
-        ) : documents.map((doc, index) => (
+        {documents.map((doc, index) => (
           <motion.article
             key={doc.id}
             initial={{ opacity: 0, y: 10 }}
@@ -79,7 +69,7 @@ export default function DocumentsPage() {
                   <FileText className="h-5 w-5 text-primary" />
                   {doc.title}
                 </Link>
-                <p className="mt-1 text-sm text-muted">Uploaded on {formatDate(doc.date)}</p>
+                <p className="mt-1 text-sm text-muted">Uploaded on {formatDate(doc.timestamp)}</p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -104,6 +94,11 @@ export default function DocumentsPage() {
             </div>
           </motion.article>
         ))}
+        {documents.length === 0 && (
+          <div className="glass-card rounded-2xl p-6 text-sm text-muted">
+            No documents found yet. Anchor a file from the dashboard to populate this list.
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

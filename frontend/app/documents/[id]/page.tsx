@@ -1,235 +1,230 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, Clipboard, Download, ExternalLink, FileText, Clock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Clipboard, Download, FileText, UserPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import BlockchainProofCard from "@/components/ui/BlockchainProofCard";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { apiFetch } from "@/lib/api";
-import { copyToClipboard, formatDate, formatDateTime, truncateHash } from "@/lib/utils";
-import axios from "axios";
+import { copyToClipboard, formatDate } from "@/lib/utils";
 
-const TAMPERED_HASH = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+type DocDetail = {
+  id: string;
+  title: string;
+  sha3_hash: string;
+  status: string;
+  created_at: string;
+  anchor_events: { tx_hash: string; block_number: number; anchored_at: string }[];
+  signatories: { id: string; email: string; signed_at: string | null }[];
+};
 
 export default function DocumentDetailsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const params = useParams();
-  const documentId = params?.id as string;
-
-  const [doc, setDoc] = useState<any>(null);
+  const docId = params.id;
+  const [doc, setDoc] = useState<DocDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  const handleDownloadCertificate = async () => {
-    try {
-      setIsDownloading(true);
-      // Calls the real API endpoint with an auth header
-      const res = await axios.get(`http://localhost:4000/api/documents/${params.id}/certificate`, {
-        headers: {
-          Authorization: `Bearer dummy-auth-token-for-demo`, // Replace with actual token
-        },
-        responseType: "blob",
-      });
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
-      window.open(url, "_blank");
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to download certificate");
-    } finally {
-      setIsDownloading(false);
-    }
-  };
+  const [inviting, setInviting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
-    if (!documentId) return;
-    const fetchDocument = async () => {
+    const run = async () => {
       try {
-        console.log('Fetching Document ID:', documentId);
-        const res = await apiFetch(`/api/documents/${documentId}`);
+        const res = await apiFetch(`/api/documents/${docId}/audit`);
         if (res.ok) {
-          const data = await res.json();
-          setDoc(data);
-        } else {
-          toast.error("Document not found.");
+          // audit returns PDF — fall back to documents list for details
         }
-      } catch (error) {
-        console.error("Fetch Error:", error);
-        toast.error("Failed to load document.");
+        // Fetch document details via documents list
+        const listRes = await apiFetch("/api/documents");
+        const listData = await listRes.json();
+        if (listRes.ok && Array.isArray(listData.documents)) {
+          const found = listData.documents.find((d: { id: string }) => d.id === docId);
+          if (found) {
+            setDoc({
+              id: found.id,
+              title: found.title,
+              sha3_hash: found.hash,
+              status: found.status,
+              created_at: found.timestamp,
+              anchor_events: found.txHash
+                ? [{ tx_hash: found.txHash, block_number: found.block || 0, anchored_at: found.timestamp }]
+                : [],
+              signatories: [],
+            });
+          }
+        }
       } finally {
         setLoading(false);
       }
     };
-    fetchDocument();
-  }, [documentId]);
+    void run();
+  }, [docId]);
 
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center py-20 text-muted">
-          <span className="mr-3 block h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
-          Loading document...
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const latestAnchor = useMemo(() => doc?.anchor_events?.[0] ?? null, [doc]);
 
-  if (!doc) {
-    return (
-      <DashboardLayout>
-        <div className="py-20 text-center text-muted">
-          <p className="text-lg">Document not found</p>
-          <button onClick={() => router.push("/documents")} className="mt-4 rounded-xl border border-border px-4 py-2 hover:bg-surface2">
-            Back to Documents
-          </button>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const onDownloadCertificate = async () => {
+    setDownloading(true);
+    try {
+      const res = await apiFetch(`/api/documents/${docId}/certificate`);
+      if (!res.ok) { toast.error("Certificate not available yet."); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `certificate-${docId}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+    } catch { toast.error("Failed to download certificate."); }
+    finally { setDownloading(false); }
+  };
 
-  const isConfirmed = doc.status === "confirmed";
-  const isAnchoring = doc.status === "anchoring";
+  const onDownloadAudit = async () => {
+    try {
+      const res = await apiFetch(`/api/documents/${docId}/audit`);
+      if (!res.ok) { toast.error("Audit report not available."); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `audit-${docId}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+    } catch { toast.error("Failed to download audit report."); }
+  };
+
+  const onInviteSignatory = async () => {
+    if (!inviteEmail.includes("@")) { toast.error("Enter a valid email."); return; }
+    setInviting(true);
+    try {
+      const res = await apiFetch(`/api/documents/${docId}/signatories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: inviteEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Invite failed");
+      toast.success(`Invite sent to ${inviteEmail}`);
+      setInviteEmail("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Invite failed");
+    } finally { setInviting(false); }
+  };
 
   return (
     <DashboardLayout>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
-          <div className="glass-card rounded-2xl p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <FileText className="text-primary" />
-              <h2 className="text-lg font-semibold">{doc.title}</h2>
-            </div>
-            <div className="space-y-2 text-sm text-muted">
-              <p>Uploaded: {formatDate(doc.date)}</p>
-              <p>File type: {doc.mimeType || "Unknown"}</p>
-              {doc.orgName && <p>Owner org: {doc.orgName}</p>}
-              <StatusBadge status={doc.status} />
-            </div>
-          </div>
-
-          <div className="glass-card rounded-2xl p-5">
-            <p className="mb-2 text-sm text-muted">SHA-3 Document Hash</p>
-            <p className="shimmer-text break-all font-mono text-primary">{doc.hash}</p>
-            <button
-              onClick={async () => {
-                await copyToClipboard(doc.hash);
-                toast.success("Copied!");
-              }}
-              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1 text-sm hover:bg-surface2"
-            >
-              <Clipboard className="h-4 w-4" /> Copy
-            </button>
-          </div>
-
-          {isConfirmed && doc.txHash ? (
-            <BlockchainProofCard
-              txHash={doc.txHash}
-              blockNumber={doc.blockNumber}
-              network={doc.network}
-              anchoredAt={doc.anchoredAt}
-              authentic
-            />
-          ) : (
-            <div className="glass-card rounded-2xl p-5">
-              <div className="flex items-center gap-2 text-amber-300">
-                <Clock className="h-5 w-5" />
-                <h3 className="font-semibold">Blockchain Anchoring In Progress</h3>
+      {loading ? (
+        <div className="text-muted">Loading document details...</div>
+      ) : !doc ? (
+        <div className="glass-card rounded-2xl p-6 text-sm text-muted">Document not found.</div>
+      ) : (
+        <>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="space-y-6">
+              <div className="glass-card rounded-2xl p-5">
+                <div className="mb-4 flex items-center gap-2">
+                  <FileText className="text-primary" />
+                  <h2 className="text-lg font-semibold">{doc.title}</h2>
+                </div>
+                <div className="space-y-2 text-sm text-muted">
+                  <p>Uploaded: {formatDate(doc.created_at)}</p>
+                  <StatusBadge status={doc.status as "anchoring" | "confirmed" | "tampered"} />
+                </div>
               </div>
-              <p className="mt-2 text-sm text-muted">
-                This document is queued for anchoring. The blockchain proof will appear here once the transaction is confirmed.
-              </p>
-            </div>
-          )}
-        </div>
 
-        <div className="space-y-6">
-          <div className="glass-card rounded-2xl p-5">
-            <h3 className="mb-4 font-semibold">Version History</h3>
-            {doc.versions && doc.versions.length > 0 ? (
-              <div className="relative space-y-4 before:absolute before:left-4 before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-primary/40">
-                {doc.versions.map((v: any) => (
-                  <div key={v.version} className="relative pl-10">
-                    <span className="absolute left-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs">{v.version}</span>
-                    <p className="font-medium">v{v.version} · {v.note}</p>
-                    <p className="text-sm text-muted">{v.hash ? truncateHash(v.hash, 20) : "N/A"}</p>
-                    <p className="text-xs text-muted">{v.date ? formatDate(v.date) : ""}</p>
-                  </div>
-                ))}
+              <div className="glass-card rounded-2xl p-5">
+                <p className="mb-2 text-sm text-muted">SHA-3 Document Hash</p>
+                <p className="shimmer-text break-all font-mono text-primary text-xs">{doc.sha3_hash}</p>
+                <button
+                  onClick={async () => { await copyToClipboard(doc.sha3_hash); toast.success("Copied!"); }}
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1 text-sm hover:bg-surface2"
+                >
+                  <Clipboard className="h-4 w-4" /> Copy Hash
+                </button>
               </div>
-            ) : (
-              <p className="text-sm text-muted">No version history available yet.</p>
-            )}
-          </div>
 
-          <div className="glass-card rounded-2xl p-5">
-            <h3 className="mb-4 font-semibold">Signatories</h3>
-            <div className="space-y-3">
-              {doc.signatories && doc.signatories.length > 0 ? (
-                doc.signatories.map((s: any) => (
-                  <div key={s.email} className="flex items-center justify-between rounded-xl border border-border bg-surface2/40 p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-xs">
-                        {s.email[0].toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="text-sm">{s.email}</p>
-                        <p className="text-xs text-muted">{s.signedAt ? formatDateTime(s.signedAt) : "Pending"}</p>
-                      </div>
-                    </div>
-                    {s.signedAt ? (
-                      <CheckCircle2 className="h-4 w-4 text-secondary" />
-                    ) : (
-                      <Clock className="h-4 w-4 text-amber-400" />
-                    )}
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted">No signatories invited yet.</p>
+              {latestAnchor && (
+                <BlockchainProofCard
+                  txHash={latestAnchor.tx_hash}
+                  blockNumber={Number(latestAnchor.block_number)}
+                  network="Polygon Mumbai"
+                  anchoredAt={latestAnchor.anchored_at}
+                  authentic
+                />
               )}
             </div>
-            <button onClick={() => setInviteOpen((v) => !v)} className="mt-4 rounded-xl border border-secondary/40 px-4 py-2 text-secondary hover:bg-secondary/10">
-              Invite Signatory
-            </button>
-            {inviteOpen && (
-              <div className="mt-3 flex gap-2">
-                <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="name@company.com" className="w-full rounded-xl border border-border bg-surface2 px-3 py-2 text-sm outline-none" />
-                <button className="rounded-xl bg-primary px-4 py-2 text-sm">Send</button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
-      <div className="mt-6 flex flex-wrap gap-3">
-        <button
-          onClick={handleDownloadCertificate}
-          disabled={isDownloading || isAnchoring}
-          className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-            isAnchoring
-              ? "cursor-not-allowed bg-gray-600 opacity-50"
-              : "bg-gradient-to-r from-primary to-indigo-500 hover-glow-purple disabled:opacity-70 disabled:cursor-not-allowed"
-          }`}
-        >
-          {isDownloading ? (
-            <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-          ) : (
-            <Download className="mr-2 inline h-4 w-4" />
-          )}
-          {isDownloading ? "Downloading..." : "Download Certificate"}
-        </button>
-        <button className="rounded-xl border border-border px-4 py-2 text-sm hover:bg-surface2">
-          <FileText className="mr-2 inline h-4 w-4" /> Export Audit Trail
-        </button>
-        <button
-          onClick={() => router.push(`/verify?hash=${TAMPERED_HASH}`)}
-          className="rounded-xl border border-red-400/40 px-4 py-2 text-xs text-red-300 hover:bg-red-500/10"
-        >
-          <AlertTriangle className="mr-2 inline h-4 w-4" /> Simulate Tampering
-        </button>
-      </div>
+            <div className="space-y-6">
+              <div className="glass-card rounded-2xl p-5">
+                <h3 className="mb-4 font-semibold">Invite Signatory</h3>
+                <div className="flex gap-2">
+                  <input
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="signatory@company.com"
+                    className="flex-1 rounded-xl border border-border bg-surface2 px-3 py-2 text-sm outline-none focus:border-primary"
+                  />
+                  <button
+                    onClick={onInviteSignatory}
+                    disabled={inviting}
+                    className="rounded-xl bg-gradient-to-r from-primary to-indigo-500 px-3 py-2 text-sm font-semibold hover-glow-purple disabled:opacity-50"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                  </button>
+                </div>
+                {doc.signatories.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {doc.signatories.map((s) => (
+                      <div key={s.id} className="flex items-center justify-between text-sm">
+                        <span className="text-muted">{s.email}</span>
+                        <span className={s.signed_at ? "text-secondary" : "text-amber-400"}>
+                          {s.signed_at ? "Signed" : "Pending"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="glass-card rounded-2xl p-5">
+                <h3 className="mb-4 font-semibold">Anchor Events</h3>
+                {doc.anchor_events.length === 0 ? (
+                  <p className="text-sm text-muted">No anchor events yet — anchoring in progress.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {doc.anchor_events.map((ev, i) => (
+                      <div key={ev.tx_hash} className="text-sm">
+                        <p className="font-medium">Event #{i + 1} · Block {Number(ev.block_number).toLocaleString()}</p>
+                        <p className="break-all font-mono text-xs text-muted">{ev.tx_hash}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              onClick={onDownloadCertificate}
+              disabled={downloading}
+              className="rounded-xl bg-gradient-to-r from-primary to-indigo-500 px-4 py-2 text-sm font-semibold hover-glow-purple disabled:opacity-50"
+            >
+              <Download className="mr-2 inline h-4 w-4" />
+              {downloading ? "Generating..." : "Download Certificate"}
+            </button>
+            <button
+              onClick={onDownloadAudit}
+              className="rounded-xl border border-border px-4 py-2 text-sm hover:bg-surface2"
+            >
+              <Download className="mr-2 inline h-4 w-4" /> Download Audit Report
+            </button>
+            <button
+              onClick={() => router.push("/verify")}
+              className="rounded-xl border border-red-400/40 px-4 py-2 text-xs text-red-300 hover:bg-red-500/10"
+            >
+              <AlertTriangle className="mr-2 inline h-4 w-4" /> Verify Another Hash
+            </button>
+          </div>
+        </>
+      )}
     </DashboardLayout>
   );
 }

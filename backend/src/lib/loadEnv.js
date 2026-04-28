@@ -1,8 +1,10 @@
 const path = require("path");
 const dotenv = require("dotenv");
 
-const envPath = path.resolve(__dirname, "../../.env");
+const backendEnvPath = path.resolve(__dirname, "../../.env");
+const contractsEnvPath = path.resolve(__dirname, "../../../contracts/.env");
 
-dotenv.config({ path: envPath });
+dotenv.config({ path: contractsEnvPath });
+dotenv.config({ path: backendEnvPath, override: true });
 
-module.exports = { envPath };
+module.exports = { backendEnvPath, contractsEnvPath };
